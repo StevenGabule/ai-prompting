@@ -4,18 +4,10 @@ import { toast, useToast } from "../ui/use-toast";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { solarizedlight, dark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useChat } from '../providers/ChatProvider';
+import { Message } from '@/hooks/useChatMessage';
 
-interface Message {
-  role: "user" | "ai";
-  content: string;
-}
-
-interface ChatWindowProps {
-  messages: Message[];
-}
-
-const ChatWindow: React.FC<ChatWindowProps> = () => {
-  const { messages } = useChat();
+const ChatWindow: React.FC = () => {
+  const { messages, currentConversationId } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [copiedIndexes, setCopiedIndexes] = useState<{ [key: string]: boolean }>({});
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
@@ -154,6 +146,10 @@ const renderMessageContent = (message: Message, messageIndex: number) => {
   return <div className="text-left break-words">{message.content}</div>;
 };
 
+  // Debug log to check messages and currentConversationId
+  console.log('Current messages:', messages);
+  console.log('Current conversation ID:', currentConversationId);
+  
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4 transition-all ease-in-out dark:text-gray-100">
       {messages.length === 0 ? (

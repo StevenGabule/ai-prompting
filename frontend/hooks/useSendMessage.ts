@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../lib/api";
 
 interface SendMessagePayload {
@@ -15,9 +15,18 @@ const sendMessage = async (payload: SendMessagePayload) => {
   return data.generated_text;
 };
 
-export const useSendMessage = () => {
+export const useSendMessage = (conversationId: string) => {
   return useMutation({
     mutationFn: sendMessage,
+    onSuccess: (response, variables) => {
+      const existingMessages = JSON.parse(localStorage.getItem(`messages_${conversationId}`) || '[]');
+      const updatedMessages = [
+        ...existingMessages,
+        { role: 'user', content: variables.text },
+        { role: 'ai', content: response }
+      ];
+      localStorage.setItem(`messages_${conversationId}`, JSON.stringify(updatedMessages));
+    },
     onError: (error) => {
       console.error("Error sending message:", error);
     },

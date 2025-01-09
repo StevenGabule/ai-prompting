@@ -1,77 +1,65 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect,  useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import ChatWindow from "@/components/conversation/ChatWindow";
 import ChatInput from "@/components/conversation/ChatInput";
-import useLocalStorage from "@/hooks/useLocalStorage"; // Import the localStorage hook
+import { useChat } from '@/components/providers/ChatProvider';
+import useChatMessages, { Message } from '@/hooks/useChatMessage';
+import { useSendMessage } from '@/hooks/useSendMessage';
 
-const ChatPage = () => {
-  const { id } = useParams();
+const ConversationChatPage = () => {
+  const {id}: {id: string} = useParams();
   const router = useRouter();
-
-  const [chatRooms] = useLocalStorage("chatRooms", []);
-  const [messages, setMessages] = useLocalStorage(`messages_${id}`, []);
+  const { chatRooms, setCurrentConversationId, setMessages } = useChat();
   const [isLoading, setIsLoading] = useState(true);
-  const [chatRoomId, setChatRoomId] = useState<string>("");
+  const { mutate: sendMessage, isPending } = useSendMessage(id);
 
   useEffect(() => {
-    // Check if the current chat room exists based on its ID
-    const roomExists = chatRooms.some((room:any) => room.id === id);
-    if (!roomExists) router.push("/");
-    else 
-    {
+    const roomExists = chatRooms.some(room => room.id === id);
+    if (!roomExists) {
+      router.push('/');
+    } else {
+      setCurrentConversationId(id);
       setIsLoading(false);
-      // Check if id is a string and assign it to chatRoomId
-
-      if (typeof id === "string") {
-        setChatRoomId(id);
-      } else if (Array.isArray(id)) {
-        setChatRoomId(id[0]); 
-      }
     }
-  }, [id, chatRooms, router]);
+  }, [id, chatRooms, router, setCurrentConversationId]);
 
- 
-
-  const sendMessage = async (input: string) => {
+  const handleSendMessage = useCallback(async (input: string) => {
     if (input.trim()) {
-      const newMessage = { role: "user", content: input };
-      const updatedMessages = [...messages, newMessage];
+      const userMessage = { role: 'user', content: input } as Message;
+      const storedMessages = localStorage.getItem(`messages_${id}`);
+      const currentMessages = storedMessages ? JSON.parse(storedMessages) : [];
+      const updatedMessages = [...currentMessages, userMessage];
 
-      setMessages(updatedMessages); 
-      const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          question: input,
-          conversation_id: chatRoomId,
-        }),
-      });
+      localStorage.setItem(`messages_${id}`, JSON.stringify(updatedMessages));
+      setMessages(updatedMessages);
 
-      const data = await response.json();
-      const aiMessage = { role: "ai", content: data.response };
-      const newMessages = [...updatedMessages, aiMessage];
-      setMessages(newMessages); 
-      
-      // setTimeout(() => {
-        
-      //   
-      // }, 1000);
+      sendMessage(
+        { text: input, conversation_id: id },
+        {
+          onSuccess: (response) => {
+            const aiMessage = { role: 'ai', content: response } as Message;
+            const finalMessages = [...updatedMessages, aiMessage];
+            localStorage.setItem(`messages_${id}`, JSON.stringify(finalMessages));
+            setMessages(finalMessages);
+          },
+          onError: (error) => {
+            console.error('Failed to send message:', error);
+          },
+        }
+      );
     }
-  };
+  }, [id, sendMessage, setMessages]);
 
-  // Prevent rendering while loading
   if (isLoading) return null;
 
   return (
     <div className="flex flex-col h-[80vh]">
-      <ChatWindow messages={messages} />
-      <ChatInput onSendMessage={sendMessage} />
+      <ChatWindow  />
+      <ChatInput onSendMessage={handleSendMessage} disabled={isPending}/>
     </div>
   );
 };
 
-export default ChatPage;
+export default ConversationChatPage;

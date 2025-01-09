@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback  } from "react";
 
 interface ChatRoom {
   id: string;
@@ -17,6 +17,10 @@ interface ChatContextType {
   deleteChatRoom: (id: string) => void; // Add delete functionality
   messages: Message[];
   setMessages: (messages: Message[]) => void;
+  loading: boolean;
+  currentConversationId: string | null;
+  setCurrentConversationId: (id: string | null) => void;
+  clearCurrentChat: () => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -25,10 +29,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [messages, setMessages] = useState<Message[]>([]);
-
-  const addChatRoom = (room: ChatRoom) => {
-    setChatRooms((prev) => [...prev, room]);
-  };
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadChatRooms = () => {
@@ -43,19 +44,57 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadChatRooms();
   }, []);
 
-  const deleteChatRoom = (id: string) => {
-    setChatRooms((prev) => prev.filter((room) => room.id !== id));
+  useEffect(() => {
+    if (chatRooms.length > 0) {
+      localStorage.setItem("chatRooms", JSON.stringify(chatRooms));
+    }
+  }, [chatRooms]);
+
+  useEffect(() => {
+    if (currentConversationId) {
+      const storedMessages = localStorage.getItem(`messages_${currentConversationId}`);
+      if (storedMessages) {
+        setMessages(JSON.parse(storedMessages));
+      } else {
+        setMessages([]);
+      }
+    }
+  }, [currentConversationId]);
+
+  const addChatRoom = (room: ChatRoom) => { 
+    setChatRooms((prev) => {
+      const newRooms = [...prev, room];
+      localStorage.setItem("chatRooms", JSON.stringify(newRooms));
+      return newRooms;
+    });
+  };
+
+  const deleteChatRoom = useCallback((id: string) => {
+    setChatRooms((prev) => {
+      const newRooms = prev.filter((room) => room.id !== id);
+      localStorage.setItem("chatRooms", JSON.stringify(newRooms));
+      return newRooms;
+    });
     localStorage.removeItem(`messages_${id}`);
-  };
-
-  const addMessage = (chatRoomId: string, message: Message) => {
-    const existingMessages = JSON.parse(window.localStorage.getItem(`messages_${chatRoomId}`) || "[]");
-    const updatedMessages = [...existingMessages, message];
-    window.localStorage.setItem(`messages_${chatRoomId}`, JSON.stringify(updatedMessages));
-  };
-
+  }, []);
+  
+  const clearCurrentChat = useCallback(() => {
+    setMessages([]);
+    setCurrentConversationId(null);
+  }, []);
+  
   return (
-    <ChatContext.Provider value={{ chatRooms, addChatRoom, deleteChatRoom, messages, setMessages }}>
+    <ChatContext.Provider value={{ 
+      chatRooms, 
+      addChatRoom, 
+      deleteChatRoom, 
+      messages, 
+      setMessages, 
+      loading ,
+      currentConversationId,
+      setCurrentConversationId,
+      clearCurrentChat
+    }}>
       {children}
     </ChatContext.Provider>
   );

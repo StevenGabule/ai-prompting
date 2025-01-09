@@ -3,10 +3,10 @@ import { Send } from "lucide-react";
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;
-  isPending: boolean;
+  disabled: boolean;
 }
 
-const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isPending }) => {
+const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled }) => {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -35,6 +35,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isPending }) => {
     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-3xl px-4 py-5 bg-gray-100 dark:bg-gray-800 shadow-lg rounded-lg flex md:mx-[150px] transition-all ease-in-out">
       <div className="flex items-center w-full">
         <textarea
+          disabled={disabled}
           ref={textareaRef}
           placeholder="Type your message..."
           value={input}
@@ -43,11 +44,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isPending }) => {
           rows={1}
           className="flex-1 px-4 py-2 rounded-lg bg-white dark:bg-gray-700 dark:text-gray-100 border focus:outline-none transition-all"
           style={{ maxHeight: "150px" }}
-          disabled={isPending}
         />
         <button
+          disabled={disabled}
           onClick={sendMessage}
-          disabled={isPending}
           className="ml-4 p-2 rounded-full bg-blue-500 text-white flex-shrink-0 transition-all transform hover:bg-blue-600 active:scale-95 dark:bg-blue-600 dark:hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Send className="h-5 w-5" />
